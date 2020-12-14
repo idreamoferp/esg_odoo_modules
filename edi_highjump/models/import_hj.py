@@ -302,13 +302,14 @@ class edi_highjump_import(models.Model):
                     user_id.active = active
                     is_updated = True
                     
-                if user_id.customer == True:
-                    user_id.customer =False
-                    is_updated = True
+                # odoo 13.0+ no longer uses customer and vendor flags    
+                # if user_id.customer == True:
+                #     user_id.customer =False
+                #     is_updated = True
                     
-                if user_id.supplier == True:
-                    user_id.supplier =False
-                    is_updated = True
+                # if user_id.supplier == True:
+                #     user_id.supplier =False
+                #     is_updated = True
                     
                     
                 if is_updated:
