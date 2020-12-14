@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+       <record id="mrp_routing_workcenter_form_quality" model="ir.ui.view">
+            <field name="name">mrp.routing.workcenter.form.quality</field>
+            <field name="model">mrp.routing.workcenter</field>
+            <field name="inherit_id" ref="mrp.mrp_routing_workcenter_form_view"/>
+            <field name="arch" type="xml">
+                <field name="sequence" position="after">
+                    <field name="quality_test"/>
+                </field>
+                
+            </field>
+        </record>
+        
+        <record id="mrp_production_workorder_form_quality" model="ir.ui.view">
+            <field name="name">mrp.production.work.order.form.quality</field>
+            <field name="model">mrp.workorder</field>
+            <field name="inherit_id" ref="mrp.mrp_production_workorder_form_view_inherit"/>
+            <field name="arch" type="xml">
+                <xpath expr="//notebook" position="inside">
+                    <page name="quality" id="quality" string="Quality">
+                        <group>
+                            <field name="quality_test"/>
+                        </group>
+                    </page>
+                </xpath>
+            </field>
+        </record>
+        
+    </data>
+</odoo>

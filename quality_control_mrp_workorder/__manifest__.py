@@ -1,0 +1,16 @@
+{
+    "name" : "Quality Control - MRP Workorder",
+    "version" : "12.0.1.0.0",
+    "author" : "Justin Mangini",
+    'category': 'Quality Control',
+    "depends" : ['quality_control_mrp'],
+    "init_xml" : [],
+    "demo_xml" : [],
+    "description": "Adds Quality Control inspections to MRP workorders before finishing production",
+    'data': ['views/views.xml', 'data/data.xml'],
+    'test': [],
+    'installable': True,
+    'auto_install': False,
+    'certificate': '',
+    'images': [''],
+}
