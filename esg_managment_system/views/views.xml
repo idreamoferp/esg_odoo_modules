@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<openerp>
+	<data>
+		<record id="esg_mgmntsystem_ncmr_tree" model="ir.ui.view">
+            <field name="name">esg_ncmr.tree</field>
+            <field name="model">mgmtsystem.nonconformity</field>
+            <field name="inherit_id" ref="mgmtsystem_nonconformity.view_mgmtsystem_nonconformity_tree"/>
+            <field name="priority" eval="20"/>
+            <field name="type">tree</field>
+            <field name="arch" type="xml">
+                <field name="user_id" position="replace"/>
+                <field name="create_date" position="replace"/>
+                <field name="responsible_user_id" position="replace"/>
+                <field name="manager_user_id" position="replace"/>
+                <field name="system_id" position="replace"/>
+                
+                
+                
+                <field name="partner_id" position="replace">
+                    <!--<field name="product_id"/>-->
+                    <field name="severity"/>
+                    <field name="partner_id" string="Vendor"/>
+                </field>
+                
+                <field name="partner_id" position="after">
+                    <field name="buyer_id"/>
+                    <field name="create_date"/>
+                    <field name="due_date"/>
+                    <field name="closing_date"/>
+                </field>
+                
+                <!--<field name="description" position="replace">-->
+                <!--    <field name="origin_ids"/>-->
+                <!--</field>-->
+                
+            </field>
+        </record>
+        
+        <record id="esg_mgmntsystem_ncmr_form" model="ir.ui.view">
+            <field name="name">esg_ncmr.form</field>
+            <field name="model">mgmtsystem.nonconformity</field>
+            <field name="inherit_id" ref="mgmtsystem_nonconformity.view_mgmtsystem_nonconformity_form"/>
+            <field name="priority" eval="20"/>
+            <field name="type">tree</field>
+            <field name="arch" type="xml">
+                
+                <field name="system_id" position="replace"/>
+                <field name="name" position="replace"/>
+                <field name="reference" position="replace"/>
+                
+                <field name="partner_id" position="after">
+                    <field name="buyer_id" attrs="{'readonly':[('state','not in',['draft','analysis']), ] }"/>
+                </field>
+                
+                <field name="create_date" position="after">
+                    <field name="due_date"/>
+                </field>
+                
+                <field name="origin_ids" position="after">
+                    <field name="severity"/>
+                </field>
+                
+                <page name="description" position="replace">
+                    <page string="D1 - D2" name="description">
+                        <group string="D1  Concern Details">
+                            <field name="description" placeholder="Add a description ..." attrs="{'readonly':[('state','not in',['draft','analysis'])]}"/>
+                        </group>
+                        <group string="D2 - Temporary Countermeasures">
+                            <field name="immediate_action_id" domain="[('type_action','=','immediate')]" attrs="{'readonly':[('state','not in',['draft', 'analysis'])]}"/>
+                        </group>
+                    </page>
+                </page>
+                
+                <page name="description" position="before">
+                    <page string="Affected Products" name="products">
+                        <field name="product_ids"/>
+                    </page>
+                </page>
+                
+            </field>
+        </record>
+        
+	</data>
+</openerp>
