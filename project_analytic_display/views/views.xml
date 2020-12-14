@@ -1,0 +1,24 @@
+<?xml version="1.0" ?>
+<openerp>
+	<data>
+		<record id="view_project_kanban_inherited" model="ir.ui.view">
+            <field name="name">project.project.timesheet.kanban.inherited</field>
+            <field name="model">project.project</field>
+            <field name="inherit_id" ref="project.view_project_kanban"/>
+            <field name="priority">24</field>
+            <field name="arch" type="xml">
+                <field name="partner_id" position="after">
+                    <field name="analytic_account_id" invisible="1"/>
+                    
+                </field>
+                <xpath expr="//div[hasclass('o_project_kanban_boxes')]" position="inside">
+                    <a t-if="record.analytic_account_id.raw_value" class="o_project_kanban_box o_project_timesheet_box" name="%(analytic.account_analytic_line_action)d" type="action" groups="analytic.group_analytic_accounting">
+                        <div>
+                            <span class="o_label">Accounting </span>
+                        </div>
+                    </a>
+                </xpath>
+            </field>
+        </record>
+	</data>
+</openerp>
