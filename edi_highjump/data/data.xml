@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding='UTF-8'?>
+<odoo>
+	<record model="ir.cron" id="highjump_cron">
+        <field name="name">EDI : HighJump</field>
+        <field name="model_id" ref="model_edi_highjump"/>
+        <field name="state">code</field>
+        <field name="code">model.import_highjump()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="doall" eval="False"/>
+    </record>
+    <record model="ir.cron" id="highjump_txn_cron">
+        <field name="name">EDI : HighJump TXN</field>
+        <field name="model_id" ref="model_edi_highjump"/>
+        <field name="state">code</field>
+        <field name="code">model.import_highjump_txn()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="doall" eval="False"/>
+    </record>
+    <data noupdate="1">
+    
+        <record model="stock.location" id="highjump_stock_fork">
+            <field name="name">Fork Lift Operators</field>
+            <field name="usage">internal</field>
+            <field name="location_id" ref="stock.stock_location_stock"/>
+        </record>
+        
+        <record model="stock.location" id="highjump_stock_prod">
+            <field name="name">Production Store</field>
+            <field name="usage">internal</field>
+            <field name="location_id" ref="stock.stock_location_stock"/>
+        </record>
+        
+        <record model="ir.config_parameter" id="highjump_last_date">
+            <field name="key">highjump_last_date</field>
+            <field name="value">1999-1-1 00:00:00</field>
+        </record>
+    </data>
+</odoo>
