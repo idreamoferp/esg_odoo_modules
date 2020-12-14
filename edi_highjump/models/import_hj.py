@@ -310,7 +310,15 @@ class edi_highjump_import(models.Model):
                 # if user_id.supplier == True:
                 #     user_id.supplier =False
                 #     is_updated = True
+                
+                name = item[1].split(",")
+                if len(name) == 2:
+                    item[1] = name[1] + " " + name[0]
                     
+                if user_id.name != item[1]:
+                    user_id.name = item[1]
+                    user_id.partner_id.name = item[1]
+                    is_updated = True
                     
                 if is_updated:
                     _logger.info("Updated USER from employee [%s]" % (item[0]))
