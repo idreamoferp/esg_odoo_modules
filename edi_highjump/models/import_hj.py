@@ -35,7 +35,7 @@ class edi_highjump_import(models.Model):
         last_date = datetime.strptime(config_last_date.value, '%Y-%m-%d %H:%M:%S')
         dates = []
         # dates.append(self.import_po_master(connection, last_date))
-        # dates.append(self.import_mo_master(connection, last_date))
+        dates.append(self.import_mo_master(connection, last_date))
         dates.append(self.import_tran_log(connection, last_date))
         
         
@@ -146,7 +146,11 @@ class edi_highjump_import(models.Model):
                         #adds buy fromt he routing list
                         product.route_ids = [(4, stock_route_buy.id)]
                         is_updated=True
-                        
+                
+                if product.company_id.id != 1:
+                    product.company_id = 1
+                    is_updated=True
+                    
                 product_uom_id = self.env.ref('edi_highjump.%s_uom_%s' % ("aad", item[2]) ,raise_if_not_found=False)
                 if product_uom_id is not None:
                     if product.uom_id != product_uom_id:
@@ -225,7 +229,7 @@ class edi_highjump_import(models.Model):
         
         for item in connection.execute(sql).fetchall():
             is_updated = False
-            if item[2] < 1:
+            if item[2] <= 0:
                 #will need to fix this later :()
                 continue
             
@@ -247,16 +251,15 @@ class edi_highjump_import(models.Model):
                 bom_line = self.env['mrp.bom.line'].create(new_line)
                 x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'mrp.bom.line', 'res_id':bom_line.id, 'name':xmlid, 'noupdate':True})
                 _logger.info("Create new BOM LINE from bom_detail [%s]" % (item[0]))
-                
-            if float(bom_line.product_qty) != float(item[2]):
-                bom_line.product_qty = item[2]
-                is_updated = True
-                
+            
             if bom_line.product_uom_id != product_tmpl_id.uom_id:
                 bom_line.product_uom_id = product_tmpl_id.uom_id
                 is_updated = True
                 
-            
+            if float(bom_line.product_qty) != float(item[2]):
+                bom_line.product_qty = float(item[2])
+                is_updated = True
+                
             if is_updated:
                 _logger.info("Updated BOM LINE from bom_detail [%s]" % (item[0]))
                 
@@ -545,7 +548,7 @@ class edi_highjump_import(models.Model):
                     dest_location = self.env.ref('edi_highjump.%s_location_%s' % ("aad", item[8]))
                     
                     u = {'name':item[0], 'product_id':variant_id.id, 'bom_id':bom_id.id, 'date_planned_start':item[4] , 'origin':item[5], 'product_qty':item[3], 'product_uom_id':variant_id.uom_id.id, 'location_src_id':dest_location.id, 'location_dest_id':dest_location.id}
-                    
+                    self.env.context.update({'import_file': True})
                     mo_id = self.with_context(import_file=True).env['mrp.production'].create(u)
                     
                     x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'mrp.production', 'res_id':mo_id.id, 'name':xmlid, 'noupdate':True})
@@ -657,12 +660,12 @@ class edi_highjump_import(models.Model):
                     
                 tran_error =self.import_tran_mfg_consume(tran_line)
         
-            # if tran_line[1] in ('110', '112', '138'):
+            if tran_line[1] in ('110', '112', '138'):
                 
-            #     #tester bachflush uses outsideID as return disposition 
-            #     if tran_line[1] == '138':
-            #         tran_line[16] = self.get_trav_num(connection, tran_line[8])
-            #     tran_error =self.import_tran_mfg_produce(tran_line) 
+                #tester bachflush uses outsideID as return disposition 
+                if tran_line[1] == '138':
+                    tran_line[16] = self.get_trav_num(connection, tran_line[8])
+                tran_error =self.import_tran_mfg_produce(tran_line) 
             
             # if not tran_error:
             #     break
@@ -814,82 +817,85 @@ class edi_highjump_import(models.Model):
             #find stock move for this product variant 
             stock_move = mrp_production.move_raw_ids.filtered(lambda q: q.product_id == variant_id and q.state != 'done')
             
-            if stock_move.reserved_availability < tran_line[13]:
-               
-                #unassign other production orders to fulfill this order
-                other_moves = self.env['stock.move'].search([("raw_material_production_id", "!=", False), ("product_id", "=", variant_id.id), ("state", "!=", "done")])
-                try:
-                    other_moves._do_unreserve()
-                except Exception as e:
-                    pass
-                mrp_production.action_assign()
-            
-            
-            if stock_move.reserved_availability < tran_line[13]:
-                if stock_move:
-                    missing_qty = tran_line[13] - stock_move.reserved_availability
-                    self.inventory_adjust(variant_id, stock_move.location_id, missing_qty, stock_move.product_uom, tran_date)
-                mrp_production.action_assign()
+            if len(stock_move) > 0:
+                if stock_move[0].reserved_availability < tran_line[13]:
+                   
+                    #unassign other production orders to fulfill this order
+                    other_moves = self.env['stock.move'].search([("raw_material_production_id", "!=", False), ("product_id", "=", variant_id.id), ("state", "!=", "done")])
+                    try:
+                        other_moves._do_unreserve()
+                    except Exception as e:
+                        pass
+                    mrp_production.action_assign()
                 
-            move_lines = stock_move.move_line_ids
-            
-            if move_lines:
-                try: 
-                    move_lines[0].qty_done = tran_line[13]
-                    stock_move._action_done()
-                    move_line_id = stock_move.move_line_ids[0]
+                
+                if stock_move[0].reserved_availability < tran_line[13]:
+                    if stock_move:
+                        missing_qty = tran_line[13] - stock_move.reserved_availability
+                        self.inventory_adjust(variant_id, stock_move.location_id, missing_qty, stock_move.product_uom, tran_date)
+                    mrp_production.action_assign()
                     
-                    
-                    move_line_id.date = tran_date
-                    move_line_id.move_id.date = tran_date
-                    x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'stock.move.line', 'res_id':move_line_id.id, 'name':xmlid, 'noupdate':True}) 
-                    _logger.info("MRP %s Consume %s DONE!" % (tran_line[16], tran_line[12]))  
-                except Exception as e:
-                    _logger.error("Error %s while closing [%s]" % (e, tran_line[0]))
-                    return False
+                move_lines = stock_move[0].move_line_ids
+                
+                if move_lines:
+                    try: 
+                        move_lines[0].qty_done = tran_line[13]
+                        stock_move._action_done()
+                        move_line_id = stock_move.move_line_ids[0]
+                        
+                        
+                        move_line_id.date = tran_date
+                        move_line_id.move_id.date = tran_date
+                        x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'stock.move.line', 'res_id':move_line_id.id, 'name':xmlid, 'noupdate':True}) 
+                        _logger.info("MRP %s Consume %s DONE!" % (tran_line[16], tran_line[12]))  
+                    except Exception as e:
+                        _logger.error("Error %s while closing [%s]" % (e, tran_line[0]))
+                        return False
         
         return True
         
     def import_tran_mfg_produce(self, tran_line):
         is_updated = False
         
-        # try:
-        tran_date = tran_line[2].strftime("%Y/%m/%d") + tran_line[3].strftime(" %H:%M:%S")
-        tran_date = datetime.strptime(tran_date, '%Y/%m/%d %H:%M:%S')
-        xmlid = '%s_tran_log_%s' % ("aad", tran_line[0])
-        #find item_number in external reference database
-        move_line_id = self.env.ref('edi_highjump.%s' % xmlid ,raise_if_not_found=False)
-        
-        if move_line_id is None:
-            mrp_production = self.env.ref('edi_highjump.%s_wo_master_%s' % ('aad', tran_line[16]), raise_if_not_found=False)
+        try:
+            tran_date = tran_line[2].strftime("%Y/%m/%d") + tran_line[3].strftime(" %H:%M:%S")
+            tran_date = datetime.strptime(tran_date, '%Y/%m/%d %H:%M:%S')
+            xmlid = '%s_tran_log_%s' % ("aad", tran_line[0])
+            #find item_number in external reference database
+            move_line_id = self.env.ref('edi_highjump.%s' % xmlid ,raise_if_not_found=False)
             
-            if not mrp_production:
-                product_tmpl_id = self.env.ref('edi_highjump.%s_item_master_%s' % ("aad", tran_line[12]))
-                variant_id = self.env['product.product'].search(['|',('active','=',True),('active','=',False),('product_tmpl_id','=',product_tmpl_id.id),])
-            
-                #this traveler didnt make it in the import, treat it as an interal move
-                dest_location= self.env.ref('edi_highjump.%s_location_%s' % ('aad', tran_line[14].strip()))
-                location_id= self.env.ref('stock.location_production')
-                if not tran_line[16]:
-                    tran_line[16] = tran_line[8]
-                return self.production_move(tran_line[16], variant_id, location_id, dest_location, tran_line[13], variant_id.uom_id, tran_date)
-            
-            stock_move = mrp_production._generate_finished_moves()
-            stock_move.quantity_done = tran_line[13]
-            stock_move._quantity_done_set()
-            move_line_id = stock_move.move_line_ids.filtered(lambda q: q.state != 'done')
-            move_line_id.location_dest_id = self.env.ref('edi_highjump.%s_location_%s' % ('aad', tran_line[14].strip()))
-            stock_move._action_done()
-            
-            if mrp_production.qty_produced >= mrp_production.product_qty:
-                mrp_production.button_mark_done()
+            if move_line_id is None:
+                mrp_production = self.env.ref('edi_highjump.%s_wo_master_%s' % ('aad', tran_line[16]), raise_if_not_found=False)
                 
-            _logger.info("MRP %s Produce %s (%s %s) DONE" % (mrp_production.name, mrp_production.product_id.name, tran_line[13], mrp_production.product_uom_id.name))
-            move_line_id = stock_move.move_line_ids[0]
-            move_line_id.date = tran_date
-            move_line_id.move_id.date = tran_date
-            x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'stock.move.line', 'res_id':move_line_id.id, 'name':xmlid, 'noupdate':True}) 
-            
+                if not mrp_production:
+                    product_tmpl_id = self.env.ref('edi_highjump.%s_item_master_%s' % ("aad", tran_line[12]))
+                    variant_id = self.env['product.product'].search(['|',('active','=',True),('active','=',False),('product_tmpl_id','=',product_tmpl_id.id),])
+                
+                    #this traveler didnt make it in the import, treat it as an interal move
+                    dest_location= self.env.ref('edi_highjump.%s_location_%s' % ('aad', tran_line[14].strip()))
+                    location_id= self.env.ref('stock.location_production')
+                    if not tran_line[16]:
+                        tran_line[16] = tran_line[8]
+                    return self.production_move(tran_line[16], variant_id, location_id, dest_location, tran_line[13], variant_id.uom_id, tran_date)
+                
+                stock_move = mrp_production._generate_finished_moves()
+                stock_move.quantity_done = tran_line[13]
+                stock_move._quantity_done_set()
+                move_line_id = stock_move.move_line_ids.filtered(lambda q: q.state != 'done')
+                move_line_id.location_dest_id = self.env.ref('edi_highjump.%s_location_%s' % ('aad', tran_line[14].strip()))
+                stock_move._action_done()
+                
+                if mrp_production.qty_produced >= mrp_production.product_qty:
+                    mrp_production.button_mark_done()
+                    
+                _logger.info("MRP %s Produce %s (%s %s) DONE" % (mrp_production.name, mrp_production.product_id.name, tran_line[13], mrp_production.product_uom_id.name))
+                move_line_id = stock_move.move_line_ids[0]
+                move_line_id.date = tran_date
+                move_line_id.move_id.date = tran_date
+                x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'stock.move.line', 'res_id':move_line_id.id, 'name':xmlid, 'noupdate':True}) 
+        except Exception as e:
+                _logger.error("Error %s while closing [%s]" % (e, tran_line[0]))
+                return False
             
         return True
         
