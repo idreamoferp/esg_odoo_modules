@@ -36,7 +36,7 @@ class edi_highjump_import(models.Model):
         dates = []
         # dates.append(self.import_po_master(connection, last_date))
         dates.append(self.import_mo_master(connection, last_date))
-        dates.append(self.import_tran_log(connection, last_date))
+        # dates.append(self.import_tran_log(connection, last_date))
         
         
         config_last_date.value = min(dates)
@@ -518,7 +518,7 @@ class edi_highjump_import(models.Model):
     
     def import_mo_master(self, connection, last_date):
         sql = ""
-        sql += "SELECT TOP (1000) work_order_number, item_number, status, qty_ordered, date_created, source, operator, comment, work_center"
+        sql += "SELECT TOP (100) work_order_number, item_number, status, qty_ordered, date_created, source, operator, comment, work_center"
         sql += " FROM t_work_order_master"
         sql += " WHERE date_created > '%s' AND qty_ordered > 0 AND item_number != 'None'" % last_date
         sql += " order by date_created"
@@ -546,7 +546,7 @@ class edi_highjump_import(models.Model):
                     
                     u = {'name':item[0], 'product_id':variant_id.id, 'bom_id':bom_id.id, 'date_planned_start':item[4] , 'origin':item[5], 'product_qty':item[3], 'product_uom_id':variant_id.uom_id.id, 'location_src_id':dest_location.id, 'location_dest_id':dest_location.id}
                     
-                    mo_id = self.env['mrp.production'].create(u)
+                    mo_id = self.with_context(import_file=True).env['mrp.production'].create(u)
                     
                     x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'mrp.production', 'res_id':mo_id.id, 'name':xmlid, 'noupdate':True})
                     _logger.info("Create new MO from wo_master [%s]" % (item[0]))
@@ -557,9 +557,15 @@ class edi_highjump_import(models.Model):
                         mo_id.user_id = user_id
                         is_updated = True
                 
+                if mo_id.state == 'draft':
+                    mo_id.action_confirm()
+                    is_updated = True
+                    
+                    
                 # if item[1] in ['520-FORD3','530-FORD5']:
                 #     mo_id.button_plan()
-                    
+                
+                
                 if is_updated:
                     _logger.info("Updated MO from wo_master [%s]" % (item[0]))
                 
