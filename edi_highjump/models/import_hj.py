@@ -35,8 +35,8 @@ class edi_highjump_import(models.Model):
         last_date = datetime.strptime(config_last_date.value, '%Y-%m-%d %H:%M:%S')
         dates = []
         # dates.append(self.import_po_master(connection, last_date))
-        dates.append(self.import_mo_master(connection, last_date))
-        # dates.append(self.import_tran_log(connection, last_date))
+        # dates.append(self.import_mo_master(connection, last_date))
+        dates.append(self.import_tran_log(connection, last_date))
         
         
         config_last_date.value = min(dates)
@@ -626,7 +626,7 @@ class edi_highjump_import(models.Model):
         
         
         sql = ""
-        sql += "SELECT top (25000) log_id, tran_type, start_tran_date, start_tran_time, employee_id, control_number, line_number, control_number_2, outside_id, location_id, hu_id, num_items,"
+        sql += "SELECT top (10000) log_id, tran_type, start_tran_date, start_tran_time, employee_id, control_number, line_number, control_number_2, outside_id, location_id, hu_id, num_items,"
         sql += " item_number, tran_qty, location_id_2, hu_id_2, return_disposition"
         sql += " FROM t_tran_log"
         sql += " WHERE start_tran_date >= '%s' AND tran_type IN (109, 110, 112, 114, 136, 138, 139, 201, 202, 231, 232, 251, 252, 253, 254, 301, 302, 303, 304, 391, 392, 395, 396)" % (last_date.date())
@@ -657,15 +657,15 @@ class edi_highjump_import(models.Model):
                     
                 tran_error =self.import_tran_mfg_consume(tran_line)
         
-            if tran_line[1] in ('110', '112', '138'):
+            # if tran_line[1] in ('110', '112', '138'):
                 
-                #tester bachflush uses outsideID as return disposition 
-                if tran_line[1] == '138':
-                    tran_line[16] = self.get_trav_num(connection, tran_line[8])
-                tran_error =self.import_tran_mfg_produce(tran_line) 
+            #     #tester bachflush uses outsideID as return disposition 
+            #     if tran_line[1] == '138':
+            #         tran_line[16] = self.get_trav_num(connection, tran_line[8])
+            #     tran_error =self.import_tran_mfg_produce(tran_line) 
             
-            if not tran_error:
-                break
+            # if not tran_error:
+            #     break
                 
             my_last_date = tran_date
             drinkme=1
@@ -808,7 +808,7 @@ class edi_highjump_import(models.Model):
             
             
             #re-check availability 
-            if mrp_production.availability in ('assigned', 'none'):
+            if mrp_production.reservation_state in ('confirmed', 'waiting'):
                 mrp_production.action_assign()
                 
             #find stock move for this product variant 
@@ -823,8 +823,6 @@ class edi_highjump_import(models.Model):
                 except Exception as e:
                     pass
                 mrp_production.action_assign()
-                
-            move_lines = stock_move.active_move_line_ids
             
             
             if stock_move.reserved_availability < tran_line[13]:
@@ -833,10 +831,9 @@ class edi_highjump_import(models.Model):
                     self.inventory_adjust(variant_id, stock_move.location_id, missing_qty, stock_move.product_uom, tran_date)
                 mrp_production.action_assign()
                 
-            move_lines = stock_move.active_move_line_ids
+            move_lines = stock_move.move_line_ids
             
-            
-            if stock_move.active_move_line_ids:
+            if move_lines:
                 try: 
                     move_lines[0].qty_done = tran_line[13]
                     stock_move._action_done()
