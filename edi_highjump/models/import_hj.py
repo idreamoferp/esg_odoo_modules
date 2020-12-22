@@ -16,14 +16,14 @@ class edi_highjump_import(models.Model):
     def import_highjump(self):
         connection = self.open_cursor()
         
-        # self.import_item_master(connection)
-        # self.import_bom_master(connection)
-        # self.import_bom_detail(connection)
-        # self.import_users(connection)
-        # self.import_locations(connection)
-        # self.import_vendors(connection)
+        self.import_item_master(connection)
+        self.import_bom_master(connection)
+        self.import_bom_detail(connection)
+        self.import_users(connection)
+        self.import_locations(connection)
+        self.import_vendors(connection)
         
-        # self.inventory_adjustment(connection)
+        self.inventory_adjustment(connection)
         self.mrp_production_close(connection)
         return True
     
@@ -617,7 +617,9 @@ class edi_highjump_import(models.Model):
                 
         #add missing lines to odoo inventory adjustment
         adjustment_id.line_ids = new_lines
-        #adjustment_id.action_validate()
+        
+        #finish adjustment
+        adjustment_id.action_validate()
         return True
     
     def mrp_production_close(self, connection):
