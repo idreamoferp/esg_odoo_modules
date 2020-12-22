@@ -16,14 +16,15 @@ class edi_highjump_import(models.Model):
     def import_highjump(self):
         connection = self.open_cursor()
         
-        self.import_item_master(connection)
-        self.import_bom_master(connection)
-        self.import_bom_detail(connection)
-        self.import_users(connection)
-        self.import_locations(connection)
-        self.import_vendors(connection)
+        # self.import_item_master(connection)
+        # self.import_bom_master(connection)
+        # self.import_bom_detail(connection)
+        # self.import_users(connection)
+        # self.import_locations(connection)
+        # self.import_vendors(connection)
         
         # self.inventory_adjustment(connection)
+        self.mrp_production_close(connection)
         return True
     
     def import_highjump_txn(self):
@@ -351,7 +352,7 @@ class edi_highjump_import(models.Model):
                 location_id = self.env.ref('edi_highjump.%s' % xmlid ,raise_if_not_found=False)
                 
                 if location_id is None:
-                    u = {'name':item[0],'useage':'internal', 'location_id':loc_stock.id }
+                    u = {'name':item[0],'usage':'internal', 'location_id':loc_stock.id }
                     location_id = self.env['stock.location'].create(u)
                     x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'stock.location', 'res_id':location_id.id, 'name':xmlid, 'noupdate':True})
                     _logger.info("Create new LOCATION from location [%s]" % (item[0]))
@@ -560,19 +561,16 @@ class edi_highjump_import(models.Model):
                         mo_id.user_id = user_id
                         is_updated = True
                 
-                if mo_id.state == 'draft':
-                    mo_id.action_confirm()
-                    is_updated = True
-                    
-                    
-                # if item[1] in ['520-FORD3','530-FORD5']:
-                #     mo_id.button_plan()
+                
+                if item[1] in ['520-FORD3','520-FORD4','520-FORD5','520-FORD6','520-FORD7','520-FORD9','530-FORD4','530-FORD5','520-FORD5']:
+                    mo_id.button_plan()
                 
                 
                 if is_updated:
                     _logger.info("Updated MO from wo_master [%s]" % (item[0]))
                 
-                #mo_id.do_unreserve()
+                mo_id.action_confirm()
+                
             except Exception as e:
                 _logger.error("Error %s while importing [%s]" % (e, item[0]))
                 break
@@ -587,11 +585,8 @@ class edi_highjump_import(models.Model):
         sql += " where actual_qty >= 0"
         
         loc_stock =  self.env.ref('stock.stock_location_stock')
-        
-        #adjustment_id = self.env['stock.inventory'].create({'name':'HJ Adjustment', 'date':datetime.now(), 'filter':'none', 'location_id':loc_stock.id, 'state':'draft',})
-        #adjustment_id.action_start()
-        adjustment_id = self.env['stock.inventory'].browse(6)
-        adjustment_id.action_reset_product_qty()
+        adjustment_id = self.env['stock.inventory'].create({'name':'HJ Adjustment', 'location_ids':[(6,0,[loc_stock.id])], 'state':'draft',})
+        adjustment_id.action_start()
         
         new_lines = []
         for item in connection.execute(sql).fetchall():
@@ -602,20 +597,45 @@ class edi_highjump_import(models.Model):
             inventory_line = adjustment_id.line_ids.filtered(lambda q: q.product_id == variant_id and q.location_id == location_id)
             if not inventory_line:
                 try:
-                    adjustment_id.line_ids = [  (0,0,{'product_id':variant_id.id, 'product_uom_id':variant_id.uom_id.id, 'product_qty':float(item[1]), 'location_id':location_id.id,}),  ]
+                    #adds inventory listed in highjump but not listed in odoo.
+                    new_lines.append( [  (0,0,{'product_id':variant_id.id, 'product_uom_id':variant_id.uom_id.id, 'product_qty':float(item[1]), 'location_id':location_id.id,}),  ] )
+                    _logger.info("Add new inventory adjust line")
+                    continue
                 except Exception as e:
                     pass
                 continue
             
             inventory_line.product_qty += float(item[1])
-            
-            if inventory_line.product_qty == inventory_line.theoretical_qty:
-                inventory_line.unlink()
+        
+        nonzero_lines = self.env['stock.inventory.line'].search([('inventory_id','=',adjustment_id.id),('difference_qty', '!=', '0')])
+        nonzero_lines.unlink()
+        #self.env['stock.inventory.line'].unlink(nonzero_lines)
+        
+        negitive_lines = self.env['stock.inventory.line'].search([('inventory_id','=',adjustment_id.id),('product_qty', '<', '0')])
+        negitive_lines.unlink()
+        # self.env['stock.inventory.line'].unlink(negitive_lines)
                 
-       
+        #add missing lines to odoo inventory adjustment
+        adjustment_id.line_ids = new_lines
         #adjustment_id.action_validate()
         return True
+    
+    def mrp_production_close(self, connection):
         
+        #get list of odoo open manufacturing orders
+        mrp_production_ids = self.env['mrp.production'].search([('state', '!=', 'done')])
+        for mrp_production_id in mrp_production_ids:
+            
+            #fetch traveler from highjump
+            sql = "SELECT work_order_number, status FROM t_work_order_master WHERE work_order_number = '%s'" % (mrp_production_id.name)
+            travelers =  connection.execute(sql).fetchall()
+            
+            if len(travelers) == 0:
+                pass
+            
+            if travelers[0][1] == 'C':
+                mrp_production_id.action_cancel()
+                
     def get_lpn(self, lpn):
         package = self.env['stock.quant.package'].search([('name','=',lpn)])
         if len(package) == 0:
@@ -831,7 +851,7 @@ class edi_highjump_import(models.Model):
                 
                 if stock_move[0].reserved_availability < tran_line[13]:
                     if stock_move:
-                        missing_qty = tran_line[13] - stock_move.reserved_availability
+                        missing_qty = tran_line[13] - stock_move[0].reserved_availability
                         self.inventory_adjust(variant_id, stock_move.location_id, missing_qty, stock_move.product_uom, tran_date)
                     mrp_production.action_assign()
                     
