@@ -655,7 +655,7 @@ class edi_highjump_import(models.Model):
         sql += "SELECT top (10000) log_id, tran_type, end_tran_date, end_tran_time, employee_id, control_number, line_number, control_number_2, outside_id, location_id, hu_id, num_items,"
         sql += " item_number, tran_qty, location_id_2, hu_id_2, return_disposition"
         sql += " FROM t_tran_log"
-        sql += " WHERE start_tran_date >= '%s' AND tran_type IN (109, 110, 112, 114, 136, 138, 139, 201, 202, 231, 232, 251, 252, 253, 254, 301, 302, 303, 304, 391, 392, 395, 396)" % (last_date.date())
+        sql += " WHERE start_tran_date >= '%s' AND tran_type IN (109, 110, 112, 114, 136, 138, 139, 201, 202, 231, 232, 251, 252, 253, 254, 301, 302, 303, 304, 391, 392, 395, 396, 335)" % (last_date.date())
         sql += " ORDER BY end_tran_date asc, end_tran_time asc, tran_type desc;"
         
         tran_lines =  connection.execute(sql).fetchall()
@@ -674,6 +674,9 @@ class edi_highjump_import(models.Model):
             
             if tran_line[1] == '114':
                 tran_error =self.import_tran_114(tran_line)
+            
+            if tran_line[1] == '335':
+                tran_error =self.import_tran_SO_tran(tran_line)
                 
             if tran_line[1] in ('109', '136', '139'):
                 
@@ -1007,6 +1010,28 @@ class edi_highjump_import(models.Model):
             
         return True
     
+    def import_tran_SO_tran(self, tran_line):
+        is_updated = False
+        
+        # try:
+        tran_date = tran_line[2].strftime("%Y/%m/%d") + tran_line[3].strftime(" %H:%M:%S")
+        tran_date = datetime.strptime(tran_date, '%Y/%m/%d %H:%M:%S')
+        xmlid = '%s_tran_log_%s' % ("aad", tran_line[0])
+        #find item_number in external reference database
+        move_line_id = self.env.ref('edi_highjump.%s' % xmlid ,raise_if_not_found=False)
+        
+        if move_line_id is None:
+            product_tmpl_id = self.env.ref('edi_highjump.%s_item_master_%s' % ("aad", tran_line[12]))
+            variant_id = self.env['product.product'].search(['|',('active','=',True),('active','=',False),('product_tmpl_id','=',product_tmpl_id.id),])
+            location_id = self.env.ref('edi_highjump.%s_location_%s' % ('aad', 'S004'))
+            dest_location = self.env.ref('stock.stock_location_customers')
+            
+            move_line_id = self.inventory_move('SO_None', variant_id, location_id, dest_location, tran_line[13], variant_id.uom_id, tran_date).move_line_ids[0]
+                    
+            x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'stock.move.line', 'res_id':move_line_id.id, 'name':xmlid, 'noupdate':True}) 
+            _logger.info("Move to Customer - %s" % tran_line[12])
+            return move_line_id
+            
     def inventory_adjust(self, product_id, location_dest_id, uom_qty, uom_id, date):
         _logger.warn("OTF Adjustment %s DONE!" % (product_id.default_code)  )
         return self.inventory_move('ADJ_%s' % product_id.default_code, product_id, self.env.ref('stock.location_inventory'), location_dest_id, uom_qty, uom_id, date)
