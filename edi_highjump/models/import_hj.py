@@ -587,6 +587,7 @@ class edi_highjump_import(models.Model):
         loc_stock =  self.env.ref('stock.stock_location_stock')
         adjustment_id = self.env['stock.inventory'].create({'name':'HJ Adjustment', 'location_ids':[(6,0,[loc_stock.id])], 'state':'draft',})
         adjustment_id.action_start()
+        adjustment_id.line_ids.action_reset_product_qty()
         
         new_lines = []
         for item in connection.execute(sql).fetchall():
@@ -598,7 +599,7 @@ class edi_highjump_import(models.Model):
             if not inventory_line:
                 try:
                     #adds inventory listed in highjump but not listed in odoo.
-                    new_lines.append( [  (0,0,{'product_id':variant_id.id, 'product_uom_id':variant_id.uom_id.id, 'product_qty':float(item[1]), 'location_id':location_id.id,}),  ] )
+                    new_lines.append( [  (0,0,{'product_id':variant_id.id, 'product_uom_id':variant_id.uom_id.id, 'product_qty':float(item[1]), 'theoretical_qty':0.0, 'location_id':location_id.id,}),  ] )
                     _logger.info("Add new inventory adjust line")
                     continue
                 except Exception as e:
@@ -607,9 +608,9 @@ class edi_highjump_import(models.Model):
             
             inventory_line.product_qty += float(item[1])
         
-        nonzero_lines = self.env['stock.inventory.line'].search([('inventory_id','=',adjustment_id.id),('difference_qty', '!=', '0')])
-        nonzero_lines.unlink()
-        #self.env['stock.inventory.line'].unlink(nonzero_lines)
+        # nonzero_lines = self.env['stock.inventory.line'].search([('inventory_id','=',adjustment_id.id),('difference_qty', '!=', '0')])
+        # nonzero_lines.unlink()
+        # self.env['stock.inventory.line'].unlink(nonzero_lines)
         
         negitive_lines = self.env['stock.inventory.line'].search([('inventory_id','=',adjustment_id.id),('product_qty', '<', '0')])
         negitive_lines.unlink()
@@ -619,7 +620,7 @@ class edi_highjump_import(models.Model):
         adjustment_id.line_ids = new_lines
         
         #finish adjustment
-        adjustment_id.action_validate()
+        # adjustment_id.action_validate()
         return True
     
     def mrp_production_close(self, connection):
@@ -829,7 +830,11 @@ class edi_highjump_import(models.Model):
                 dest_location = self.env.ref('stock.location_production')
                 if not tran_line[16]:
                     tran_line[16] = tran_line[8]
-                return self.production_move(tran_line[16], variant_id, location_id, dest_location, tran_line[13], variant_id.uom_id, tran_date)
+               
+                move_line_id = self.production_move(tran_line[16], variant_id, location_id, dest_location, tran_line[13], variant_id.uom_id, tran_date).move_line_ids
+                    
+                x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'stock.move.line', 'res_id':move_line_id.id, 'name':xmlid, 'noupdate':True}) 
+                return move_line_id
             
             
             #re-check availability 
@@ -898,7 +903,12 @@ class edi_highjump_import(models.Model):
                     location_id= self.env.ref('stock.location_production')
                     if not tran_line[16]:
                         tran_line[16] = tran_line[8]
-                    return self.production_move(tran_line[16], variant_id, location_id, dest_location, tran_line[13], variant_id.uom_id, tran_date)
+                    move_line_id = self.production_move(tran_line[16], variant_id, location_id, dest_location, tran_line[13], variant_id.uom_id, tran_date).move_line_ids[0]
+                    
+                    x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'stock.move.line', 'res_id':move_line_id.id, 'name':xmlid, 'noupdate':True}) 
+                    return move_line_id
+                    
+                   
                 
                 stock_move = mrp_production._generate_finished_moves()
                 stock_move.quantity_done = tran_line[13]
@@ -1010,19 +1020,24 @@ class edi_highjump_import(models.Model):
         adjustment_move = self.env['stock.move'].create(new_move)
         adjustment_move._action_confirm()
         adjustment_move._action_assign()
-        if adjustment_move.move_line_ids:
-            
-            move_lines = adjustment_move.move_line_ids
-            adjustment_move.move_line_ids[0].date = datetime.now()
-            adjustment_move.move_line_ids[0].qty_done = uom_qty
-            adjustment_move._action_done()
-            
-            #adjust data back to orgional date
-            try:
-                adjustment_move.move_line_ids[0].date = date
-            except Exception as e:
-                pass
-            adjustment_move.date = date
+        
+        # if not adjustment_move.move_line_ids:
+        #     self.inventory_adjust(product_id, location_dest_id, uom_qty, uom_id, date)
+        #     adjustment_move._action_assign()
+        
+        move_lines = adjustment_move.move_line_ids
+        # adjustment_move.move_line_ids[0].date = datetime.now()
+        # adjustment_move.move_line_ids[0].qty_done = uom_qty
+        adjustment_move.quantity_done = uom_qty
+        adjustment_move._quantity_done_set()
+        adjustment_move._action_done()
+        
+        #adjust data back to orgional date
+        try:
+            adjustment_move.move_line_ids[0].date = date
+        except Exception as e:
+            pass
+        adjustment_move.date = date
             
        
         return adjustment_move
