@@ -599,7 +599,7 @@ class edi_highjump_import(models.Model):
             if not inventory_line:
                 try:
                     #adds inventory listed in highjump but not listed in odoo.
-                    new_lines.append( [  (0,0,{'product_id':variant_id.id, 'product_uom_id':variant_id.uom_id.id, 'product_qty':float(item[1]), 'theoretical_qty':0.0, 'location_id':location_id.id,}),  ] )
+                    new_lines.append( [  (0,0,{'product_id':variant_id.id, 'product_uom_id':variant_id.uom_id.id, 'product_qty':float(item[1]), 'theoretical_qty':0.0, 'location_id':location_id.id, 'inventory_id':adjustment_id.id}),  ] )
                     _logger.info("Add new inventory adjust line")
                     continue
                 except Exception as e:
@@ -608,9 +608,9 @@ class edi_highjump_import(models.Model):
             
             inventory_line.product_qty += float(item[1])
         
-        # nonzero_lines = self.env['stock.inventory.line'].search([('inventory_id','=',adjustment_id.id),('difference_qty', '!=', '0')])
-        # nonzero_lines.unlink()
-        # self.env['stock.inventory.line'].unlink(nonzero_lines)
+        nonzero_lines = self.env['stock.inventory.line'].search([('difference_qty', '!=', '0')])
+        nonzero_lines.unlink()
+        self.env['stock.inventory.line'].unlink(nonzero_lines)
         
         negitive_lines = self.env['stock.inventory.line'].search([('inventory_id','=',adjustment_id.id),('product_qty', '<', '0')])
         negitive_lines.unlink()
@@ -652,11 +652,11 @@ class edi_highjump_import(models.Model):
         
         
         sql = ""
-        sql += "SELECT top (10000) log_id, tran_type, start_tran_date, start_tran_time, employee_id, control_number, line_number, control_number_2, outside_id, location_id, hu_id, num_items,"
+        sql += "SELECT top (10000) log_id, tran_type, end_tran_date, end_tran_time, employee_id, control_number, line_number, control_number_2, outside_id, location_id, hu_id, num_items,"
         sql += " item_number, tran_qty, location_id_2, hu_id_2, return_disposition"
         sql += " FROM t_tran_log"
         sql += " WHERE start_tran_date >= '%s' AND tran_type IN (109, 110, 112, 114, 136, 138, 139, 201, 202, 231, 232, 251, 252, 253, 254, 301, 302, 303, 304, 391, 392, 395, 396)" % (last_date.date())
-        sql += " ORDER BY start_tran_date asc, start_tran_time asc, tran_type desc;"
+        sql += " ORDER BY end_tran_date asc, end_tran_time asc, tran_type desc;"
         
         tran_lines =  connection.execute(sql).fetchall()
         line_num = 0
@@ -844,40 +844,51 @@ class edi_highjump_import(models.Model):
             #find stock move for this product variant 
             stock_move = mrp_production.move_raw_ids.filtered(lambda q: q.product_id == variant_id and q.state != 'done')
             
-            if len(stock_move) > 0:
-                if stock_move[0].reserved_availability < tran_line[13]:
-                   
-                    #unassign other production orders to fulfill this order
-                    other_moves = self.env['stock.move'].search([("raw_material_production_id", "!=", False), ("product_id", "=", variant_id.id), ("state", "!=", "done")])
-                    try:
-                        other_moves._do_unreserve()
-                    except Exception as e:
-                        pass
-                    mrp_production.action_assign()
-                
-                
-                if stock_move[0].reserved_availability < tran_line[13]:
-                    if stock_move:
-                        missing_qty = tran_line[13] - stock_move[0].reserved_availability
-                        self.inventory_adjust(variant_id, stock_move.location_id, missing_qty, stock_move.product_uom, tran_date)
-                    mrp_production.action_assign()
+            if len(stock_move) == 0:
+                location_id = self.env.ref('edi_highjump.%s_location_%s' % ('aad', tran_line[9]))
+                dest_location = self.env.ref('stock.location_production')
+                if not tran_line[16]:
+                    tran_line[16] = tran_line[8]
                     
-                move_lines = stock_move[0].move_line_ids
+                move_line_id = self.production_move(tran_line[16], variant_id, location_id, dest_location, tran_line[13], variant_id.uom_id, tran_date).move_line_ids
+                x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'stock.move.line', 'res_id':move_line_id.id, 'name':xmlid, 'noupdate':True}) 
+                return True
+            #     if stock_move[0].reserved_availability < tran_line[13]:
+                   
+            #         #unassign other production orders to fulfill this order
+            #         other_moves = self.env['stock.move'].search([("raw_material_production_id", "!=", False), ("product_id", "=", variant_id.id), ("state", "!=", "done")])
+            #         try:
+            #             other_moves._do_unreserve()
+            #             stock_move[0]._action_assign()
+            #         except Exception as e:
+            #             pass
+                    
                 
-                if move_lines:
-                    try: 
-                        move_lines[0].qty_done = tran_line[13]
-                        stock_move._action_done()
-                        move_line_id = stock_move.move_line_ids[0]
-                        
-                        
-                        move_line_id.date = tran_date
-                        move_line_id.move_id.date = tran_date
-                        x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'stock.move.line', 'res_id':move_line_id.id, 'name':xmlid, 'noupdate':True}) 
-                        _logger.info("MRP %s Consume %s DONE!" % (tran_line[16], tran_line[12]))  
-                    except Exception as e:
-                        _logger.error("Error %s while closing [%s]" % (e, tran_line[0]))
-                        return False
+                
+            #     if stock_move[0].reserved_availability < tran_line[13]:
+            #         if stock_move:
+            #             missing_qty = tran_line[13] - stock_move[0].reserved_availability
+            #             self.inventory_adjust(variant_id, stock_move.location_id, missing_qty, stock_move.product_uom, tran_date)
+            #         mrp_production.action_assign()
+                    
+            #     move_lines = stock_move[0].move_line_ids
+                
+                # if move_lines:
+            try: 
+                # move_lines[0].qty_done = tran_line[13]
+                stock_move[0].quantity_done = tran_line[13]
+                stock_move[0]._quantity_done_set()
+                stock_move[0]._action_done()
+                
+                move_line_id = stock_move[0].move_line_ids[0]
+                
+                move_line_id.date = tran_date
+                move_line_id.move_id.date = tran_date
+                x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'stock.move.line', 'res_id':move_line_id.id, 'name':xmlid, 'noupdate':True}) 
+                _logger.info("MRP %s Consume %s DONE!" % (tran_line[16], tran_line[12]))  
+            except Exception as e:
+                _logger.error("Error %s while closing [%s]" % (e, tran_line[0]))
+                return False
         
         return True
         
