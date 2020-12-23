@@ -608,9 +608,9 @@ class edi_highjump_import(models.Model):
             
             inventory_line.product_qty += float(item[1])
         
-        nonzero_lines = self.env['stock.inventory.line'].search([('difference_qty', '!=', '0')])
-        nonzero_lines.unlink()
-        self.env['stock.inventory.line'].unlink(nonzero_lines)
+        # nonzero_lines = self.env['stock.inventory.line'].search([('difference_qty', '!=', '0')])
+        # nonzero_lines.unlink()
+        # self.env['stock.inventory.line'].unlink(nonzero_lines)
         
         negitive_lines = self.env['stock.inventory.line'].search([('inventory_id','=',adjustment_id.id),('product_qty', '<', '0')])
         negitive_lines.unlink()
