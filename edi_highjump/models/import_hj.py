@@ -23,7 +23,7 @@ class edi_highjump_import(models.Model):
         self.import_locations(connection)
         self.import_vendors(connection)
         
-        self.inventory_adjustment(connection)
+        # self.inventory_adjustment(connection)
         self.mrp_production_close(connection)
         return True
     
