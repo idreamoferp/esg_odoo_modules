@@ -675,8 +675,8 @@ class edi_highjump_import(models.Model):
             if tran_line[1] == '114':
                 tran_error =self.import_tran_114(tran_line)
             
-            if tran_line[1] == '335':
-                tran_error =self.import_tran_SO_tran(tran_line)
+            # if tran_line[1] == '335':
+            #     tran_error =self.import_tran_SO_tran(tran_line)
                 
             if tran_line[1] in ('109', '136', '139'):
                 
@@ -854,33 +854,35 @@ class edi_highjump_import(models.Model):
                     tran_line[16] = tran_line[8]
                     
                 move_line_id = self.production_move(tran_line[16], variant_id, location_id, dest_location, tran_line[13], variant_id.uom_id, tran_date).move_line_ids
-                x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'stock.move.line', 'res_id':move_line_id.id, 'name':xmlid, 'noupdate':True}) 
+                if len(move_line_id):
+                    x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'stock.move.line', 'res_id':move_line_id.id, 'name':xmlid, 'noupdate':True}) 
                 return True
-            #     if stock_move[0].reserved_availability < tran_line[13]:
-                   
-            #         #unassign other production orders to fulfill this order
-            #         other_moves = self.env['stock.move'].search([("raw_material_production_id", "!=", False), ("product_id", "=", variant_id.id), ("state", "!=", "done")])
-            #         try:
-            #             other_moves._do_unreserve()
-            #             stock_move[0]._action_assign()
-            #         except Exception as e:
-            #             pass
+                
+            if stock_move[0].reserved_availability < tran_line[13]:
+               
+                #unassign other production orders to fulfill this order
+                other_moves = self.env['stock.move'].search([("raw_material_production_id", "!=", False), ("product_id", "=", variant_id.id), ("state", "!=", "done")])
+                try:
+                    other_moves._do_unreserve()
+                    stock_move[0]._action_assign()
+                except Exception as e:
+                    pass
                     
                 
                 
-            #     if stock_move[0].reserved_availability < tran_line[13]:
-            #         if stock_move:
-            #             missing_qty = tran_line[13] - stock_move[0].reserved_availability
-            #             self.inventory_adjust(variant_id, stock_move.location_id, missing_qty, stock_move.product_uom, tran_date)
-            #         mrp_production.action_assign()
-                    
-            #     move_lines = stock_move[0].move_line_ids
+            if stock_move[0].reserved_availability < tran_line[13]:
+                if stock_move:
+                    missing_qty = tran_line[13] - stock_move[0].reserved_availability
+                    self.inventory_adjust(variant_id, stock_move.location_id, missing_qty, stock_move.product_uom, tran_date)
+                mrp_production.action_assign()
+                
+            move_lines = stock_move[0].move_line_ids
                 
                 # if move_lines:
             try: 
-                # move_lines[0].qty_done = tran_line[13]
-                stock_move[0].quantity_done = tran_line[13]
-                stock_move[0]._quantity_done_set()
+                move_lines[0].qty_done = tran_line[13]
+                # stock_move[0].quantity_done = tran_line[13]
+                # stock_move[0]._quantity_done_set()
                 stock_move[0]._action_done()
                 
                 move_line_id = stock_move[0].move_line_ids[0]
@@ -1057,24 +1059,26 @@ class edi_highjump_import(models.Model):
         adjustment_move._action_confirm()
         adjustment_move._action_assign()
         
-        # if not adjustment_move.move_line_ids:
+        # if adjustment_move.reserved_availability != uom_qty:
+        #     missing_qty = uom_qty - adjustment_move.reserved_availability
         #     self.inventory_adjust(product_id, location_dest_id, uom_qty, uom_id, date)
         #     adjustment_move._action_assign()
         
-        move_lines = adjustment_move.move_line_ids
+        # move_lines = adjustment_move.move_line_ids
         # adjustment_move.move_line_ids[0].date = datetime.now()
-        # adjustment_move.move_line_ids[0].qty_done = uom_qty
-        adjustment_move.quantity_done = uom_qty
-        adjustment_move._quantity_done_set()
-        adjustment_move._action_done()
+        
+        # adjustment_move.quantity_done = uom_qty
+        # adjustment_move._quantity_done_set()
+        
         
         #adjust data back to orgional date
         try:
+            adjustment_move.move_line_ids[0].qty_done = uom_qty
+            adjustment_move._action_done()
+            adjustment_move.date = date
             adjustment_move.move_line_ids[0].date = date
         except Exception as e:
-            pass
-        adjustment_move.date = date
-            
+             _logger.error("Error %s while Creating inventory move [%s]" % (e, name))
        
         return adjustment_move
         
