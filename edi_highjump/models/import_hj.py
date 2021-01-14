@@ -837,8 +837,8 @@ class edi_highjump_import(models.Model):
                     tran_line[16] = tran_line[8]
                
                 move_line_id = self.production_move(tran_line[16], variant_id, location_id, dest_location, tran_line[13], variant_id.uom_id, tran_date).move_line_ids
-                    
-                x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'stock.move.line', 'res_id':move_line_id.id, 'name':xmlid, 'noupdate':True}) 
+                if move_line_id:    
+                    x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'stock.move.line', 'res_id':move_line_id.id, 'name':xmlid, 'noupdate':True}) 
                 return move_line_id
             
             
