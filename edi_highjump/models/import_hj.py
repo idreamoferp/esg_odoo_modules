@@ -404,7 +404,7 @@ class edi_highjump_import(models.Model):
                 vendor_id = self.env.ref('edi_highjump.%s' % xmlid ,raise_if_not_found=False)
                 
                 if vendor_id is None:
-                    u = {'name':item[2],'supplier':True , 'customer':False, 'ref':item[1].strip(), 'company_type':'company' }
+                    u = {'name':item[2], 'ref':item[1].strip(), 'company_type':'company' }
                     vendor_id = self.env['res.partner'].create(u)
                     x_ref = self.env['ir.model.data'].create({'module':'edi_highjump', 'model':'res.partner', 'res_id':vendor_id.id, 'name':xmlid, 'noupdate':True})
                     _logger.info("Create new PARTNER from vendor [%s]" % (item[0].strip()))
