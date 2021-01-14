@@ -628,16 +628,18 @@ class edi_highjump_import(models.Model):
         #get list of odoo open manufacturing orders
         mrp_production_ids = self.env['mrp.production'].search([('state', '!=', 'done')])
         for mrp_production_id in mrp_production_ids:
-            
-            #fetch traveler from highjump
-            sql = "SELECT work_order_number, status FROM t_work_order_master WHERE work_order_number = '%s'" % (mrp_production_id.name)
-            travelers =  connection.execute(sql).fetchall()
-            
-            if len(travelers) == 0:
-                pass
-            
-            if travelers[0][1] == 'C':
-                mrp_production_id.action_cancel()
+            try:
+                #fetch traveler from highjump
+                sql = "SELECT work_order_number, status FROM t_work_order_master WHERE work_order_number = '%s'" % (mrp_production_id.name)
+                travelers =  connection.execute(sql).fetchall()
+                
+                if len(travelers) == 0:
+                    pass
+                
+                if travelers[0][1] == 'C':
+                    mrp_production_id.action_cancel()
+            except Exception as e:
+                    pass   
                 
     def get_lpn(self, lpn):
         package = self.env['stock.quant.package'].search([('name','=',lpn)])
