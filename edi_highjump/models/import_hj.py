@@ -936,6 +936,7 @@ class edi_highjump_import(models.Model):
                 stock_move._action_done()
                 
                 if mrp_production.qty_produced >= mrp_production.product_qty:
+                    mrp_production.workorder_ids.button_done()
                     mrp_production.button_mark_done()
                     
                 _logger.info("MRP %s Produce %s (%s %s) DONE" % (mrp_production.name, mrp_production.product_id.name, tran_line[13], mrp_production.product_uom_id.name))
