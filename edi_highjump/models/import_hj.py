@@ -319,9 +319,9 @@ class edi_highjump_import(models.Model):
                 if len(name) == 2:
                     item[1] = name[1] + " " + name[0]
                     
-                if user_id.name != item[1]:
-                    user_id.name = item[1]
-                    user_id.partner_id.name = item[1]
+                if user_id.name != item[1].title():
+                    user_id.name = item[1].title()
+                    user_id.partner_id.name = item[1].title()
                     is_updated = True
                     
                 if is_updated:
