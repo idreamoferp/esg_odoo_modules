@@ -561,16 +561,14 @@ class edi_highjump_import(models.Model):
                         mo_id.user_id = user_id
                         is_updated = True
                 
-                
-                if item[1] in ['520-FORD3','520-FORD4','520-FORD5','520-FORD6','520-FORD7','520-FORD9','520-FORD11','530-FORD4','530-FORD5','530-FORD5']:
-                    mo_id.button_plan()
-                
-                
                 if is_updated:
                     _logger.info("Updated MO from wo_master [%s]" % (item[0]))
                 
                 mo_id.action_confirm()
                 
+                if item[1] in ['520-FORD3','520-FORD4','520-FORD5','520-FORD6','520-FORD7','520-FORD9','520-FORD11','530-FORD4','530-FORD5','530-FORD5']:
+                    mo_id.button_plan()
+                    
             except Exception as e:
                 _logger.error("Error %s while importing [%s]" % (e, item[0]))
                 break
