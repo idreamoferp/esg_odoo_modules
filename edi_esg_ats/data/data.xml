@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding='UTF-8'?>
+<odoo>
+	<record model="ir.cron" id="ats_cron">
+        <field name="name">EDI : ESG ATS</field>
+        <field name="model_id" ref="model_edi_esg_ats"/>
+        <field name="state">code</field>
+        <field name="code">model.import_ats()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="doall" eval="False"/>
+    </record>
+    <data>
+        <record model="calibration.calibration.procedure" id="calibration_procedure">
+            <field name="name">Alarm Test Station Daily Calibration</field>
+            <field name="description"></field>
+            <field name="compute_type">all</field>
+        </record>
+        
+        <record model="calibration.calibration.procedure.test" id="calibration_procedure_test_1">
+            <field name="name">Alarm Test Station Daily Calibration</field>
+            <field name="procedure_id" ref="calibration_procedure" ></field>
+            <field name="target_value">93.8</field>
+            <field name="target_value_uom" ref="uom_additional_uom.product_uom_db"></field>
+            <field name="tolerance">1.0</field>
+            <field name="tolerance_uom" ref="uom_additional_uom.product_uom_db"></field>
+            <field name="test_type">tolerance</field>
+            
+        </record>
+    </data>
+    
+     <data noupdate="1">
+        <record model="ir.config_parameter" id="dailycal_last_date">
+            <field name="key">dailycal_last_date</field>
+            <field name="value">1999-1-1 00:00:00</field>
+        </record>
+        
+        <record model="maintenance.equipment" id="ATS_1">
+            <field name="name">Alarm Test Station (TC1)</field>
+            <field name="serial_no">TC1</field>
+            <field name="calibration_type" ref="maintenance_calibration.calibration_type_verify"></field>
+            <field name="calibration_interval">6</field>
+            <field name="calibration_interval_type">hours</field>
+            <field name="calibration_procedure_id" ref="edi_esg_ats.calibration_procedure"></field>
+        </record>
+        <record model="maintenance.equipment" id="ATS_2">
+            <field name="name">Alarm Test Station (TC2)</field>
+            <field name="serial_no">TC2</field>
+            <field name="calibration_type" ref="maintenance_calibration.calibration_type_verify"></field>
+            <field name="calibration_interval">6</field>
+            <field name="calibration_interval_type">hours</field>
+            <field name="calibration_procedure_id" ref="edi_esg_ats.calibration_procedure"></field>
+        </record>
+        <record model="maintenance.equipment" id="ATS_3">
+            <field name="name">Alarm Test Station (TC3)</field>
+            <field name="serial_no">TC3</field>
+            <field name="calibration_type" ref="maintenance_calibration.calibration_type_verify"></field>
+            <field name="calibration_interval">6</field>
+            <field name="calibration_interval_type">hours</field>
+            <field name="calibration_procedure_id" ref="edi_esg_ats.calibration_procedure"></field>
+        </record>
+        <record model="maintenance.equipment" id="ATS_4">
+            <field name="name">Alarm Test Station (TC4)</field>
+            <field name="serial_no">TC4</field>
+            <field name="calibration_type" ref="maintenance_calibration.calibration_type_verify"></field>
+            <field name="calibration_interval">6</field>
+            <field name="calibration_interval_type">hours</field>
+            <field name="calibration_procedure_id" ref="edi_esg_ats.calibration_procedure"></field>
+        </record>
+        <record model="maintenance.equipment" id="ATS_5">
+            <field name="name">Alarm Test Station (TC5)</field>
+            <field name="serial_no">TC5</field>
+            <field name="calibration_type" ref="maintenance_calibration.calibration_type_verify"></field>
+            <field name="calibration_interval">6</field>
+            <field name="calibration_interval_type">hours</field>
+            <field name="calibration_procedure_id" ref="edi_esg_ats.calibration_procedure"></field>
+        </record>
+        <record model="maintenance.equipment" id="ATS_6">
+            <field name="name">Alarm Test Station (TC6)</field>
+            <field name="serial_no">TC6</field>
+            <field name="calibration_type" ref="maintenance_calibration.calibration_type_verify"></field>
+            <field name="calibration_interval">6</field>
+            <field name="calibration_interval_type">hours</field>
+            <field name="calibration_procedure_id" ref="edi_esg_ats.calibration_procedure"></field>
+        </record>
+        <record model="maintenance.equipment" id="ATS_7">
+            <field name="name">Alarm Test Station (TC7)</field>
+            <field name="serial_no">TC7</field>
+            <field name="calibration_type" ref="maintenance_calibration.calibration_type_verify"></field>
+            <field name="calibration_interval">6</field>
+            <field name="calibration_interval_type">hours</field>
+            <field name="calibration_procedure_id" ref="edi_esg_ats.calibration_procedure"></field>
+        </record>
+        <record model="maintenance.equipment" id="ATS_8">
+            <field name="name">Alarm Test Station (TC8)</field>
+            <field name="serial_no">TC8</field>
+            <field name="calibration_type" ref="maintenance_calibration.calibration_type_verify"></field>
+            <field name="calibration_interval">6</field>
+            <field name="calibration_interval_type">hours</field>
+            <field name="calibration_procedure_id" ref="edi_esg_ats.calibration_procedure"></field>
+        </record>
+        <record model="maintenance.equipment" id="ATS_9">
+            <field name="name">Alarm Test Station (TC9)</field>
+            <field name="serial_no">TC9</field>
+            <field name="calibration_type" ref="maintenance_calibration.calibration_type_verify"></field>
+            <field name="calibration_interval">6</field>
+            <field name="calibration_interval_type">hours</field>
+            <field name="calibration_procedure_id" ref="edi_esg_ats.calibration_procedure"></field>
+        </record>
+        <record model="maintenance.equipment" id="ATS_10">
+            <field name="name">Alarm Test Station (TC10)</field>
+            <field name="serial_no">TC10</field>
+            <field name="calibration_type" ref="maintenance_calibration.calibration_type_verify"></field>
+            <field name="calibration_interval">6</field>
+            <field name="calibration_interval_type">hours</field>
+            <field name="calibration_procedure_id" ref="edi_esg_ats.calibration_procedure"></field>
+        </record>
+        <record model="maintenance.equipment" id="ATS_11">
+            <field name="name">Alarm Test Station (TC11)</field>
+            <field name="serial_no">TC11</field>
+            <field name="calibration_type" ref="maintenance_calibration.calibration_type_verify"></field>
+            <field name="calibration_interval">6</field>
+            <field name="calibration_interval_type">hours</field>
+            <field name="calibration_procedure_id" ref="edi_esg_ats.calibration_procedure"></field>
+        </record>
+        <record model="maintenance.equipment" id="ATS_12">
+            <field name="name">Alarm Test Station (TC12)</field>
+            <field name="serial_no">TC12</field>
+            <field name="calibration_type" ref="maintenance_calibration.calibration_type_verify"></field>
+            <field name="calibration_interval">6</field>
+            <field name="calibration_interval_type">hours</field>
+            <field name="calibration_procedure_id" ref="edi_esg_ats.calibration_procedure"></field>
+        </record>
+    </data>
+    
+</odoo>
