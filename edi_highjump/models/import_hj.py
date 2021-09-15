@@ -9,7 +9,7 @@ class edi_highjump_import(models.Model):
     _description = "EDI HighJump"
     
     def open_cursor(self):
-        conn = pyodbc.connect('Driver={ODBC Driver 17 for SQL Server};Server=ECCOSQL01\HJ;Database=AAD;UID=hjepoxy;PWD=Xppxu5Q0VBvRnT6h')
+        conn = pyodbc.connect('Driver={ODBC Driver 17 for SQL Server};Server=USBOIAGP13-WMS1;Database=AAD;UID=hjepoxy;PWD=Xppxu5Q0VBvRnT6h')
         cursor = conn.cursor()
         return cursor
         
@@ -526,8 +526,8 @@ class edi_highjump_import(models.Model):
         sql += " FROM t_work_order_master"
         sql += " WHERE date_created > '%s' AND qty_ordered > 0 AND item_number != 'None'" % last_date
         sql += " order by date_created"
-        
-        for item in connection.execute(sql).fetchall():
+        items = connection.execute(sql).fetchall()
+        for item in items:
             is_updated = False
             try:
                 xmlid = '%s_wo_master_%s' % ("aad", item[0])
