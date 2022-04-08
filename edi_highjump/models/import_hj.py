@@ -566,7 +566,7 @@ class edi_highjump_import(models.Model):
                 
                 mo_id.action_confirm()
                 
-                if item[1] in ['520-FORD1', '520-FORD3','520-FORD4','520-FORD5','520-FORD6','520-FORD7','520-FORD9','520-FORD11', '530-FORD1', '530-FORD4','530-FORD5','530-FORD5', '530-FORD9', '530-FORD11']:
+                if item[1] in ['520-FORD1', '520-FORD3','520-FORD4','520-FORD5','520-FORD6','520-FORD7','520-FORD9','520-FORD11', '530-FORD1', '530-FORD4','530-FORD5','530-FORD7', '530-FORD9', '530-FORD11']:
                     mo_id.button_plan()
                     
             except Exception as e:
